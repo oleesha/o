@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private File Storage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        #loginSection {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin: 50px auto;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        #dashboardSection {
+            display: none;
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin: 20px auto;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        #fileList {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #fileList th, #fileList td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        #fileList th {
+            background-color: #f2f2f2;
+        }
+        
+        .file-row:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .file-actions button {
+            padding: 6px 12px;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+        
+        .logout-btn {
+            background-color: #e74c3c;
+            float: right;
+        }
+        
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        #dragDropArea {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        
+        #dragDropArea.highlight {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .no-files-message {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+        }
+        
+        #storageInfo {
+            margin-top: 20px;
+            background-color: #f2f2f2;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection">
+            <h1>Private File Storage</h1>
+            <p>Login to access your private files</p>
+            <div id="loginAlert" class="alert" style="display: none;"></div>
+            <div>
+                <input type="text" id="username" placeholder="Username" />
+                <input type="password" id="password" placeholder="Password" />
+                <button type="button" id="loginBtn">Login</button>
+            </div>
+        </div>
+        
+        <!-- Dashboard Section -->
+        <div id="dashboardSection">
+            <div class="dashboard-header">
+                <h1>Your Private Files</h1>
+                <button type="button" class="logout-btn" id="logoutBtn">Logout</button>
+            </div>
+            
+            <div id="dragDropArea">
+                <h3>Drag & Drop Files Here</h3>
+                <p>or</p>
+                <button type="button" id="selectFileBtn">Select Files</button>
+                <input type="file" id="fileInput" style="display: none;" multiple />
+            </div>
+            
+            <div id="fileListContainer">
+                <table id="fileList">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%">File Name</th>
+                            <th style="width: 20%">Size</th>
+                            <th style="width: 20%">Date Added</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fileListBody"></tbody>
+                </table>
+                <div id="noFilesMessage" class="no-files-message">No files added yet.</div>
+            </div>
+            
+            <div id="storageInfo">
+                <div>Storage Used: <span id="usedStorage">0 KB</span> / <span id="totalStorage">5 MB</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="storageProgressBar"></div>
+                </div>
+                <p style="margin-top: 10px; font-size: 12px;">Note: This website uses your browser's local storage. Clearing browser data will delete your files.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const CORRECT_USERNAME = "oleesha";
+        const CORRECT_PASSWORD = "Olee2011a";
+        const MAX_STORAGE_BYTES = 5 * 1024 * 1024; // 5MB limit for localStorage
+        
+        // DOM Elements
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loginAlert = document.getElementById('loginAlert');
+        const fileInput = document.getElementById('fileInput');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const dragDropArea = document.getElementById('dragDropArea');
+        const fileListBody = document.getElementById('fileListBody');
+        const noFilesMessage = document.getElementById('noFilesMessage');
+        const usedStorage = document.getElementById('usedStorage');
+        const storageProgressBar = document.getElementById('storageProgressBar');
+        
+        // Check if user is already logged in
+        function checkLoginStatus() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            
+            if (isLoggedIn === 'true') {
+                showDashboard();
+            } else {
+                showLogin();
+            }
+        }
+        
+        // Show login section
+        function showLogin() {
+            loginSection.style.display = 'block';
+            dashboardSection.style.display = 'none';
+        }
+        
+        // Show dashboard section
+        function showDashboard() {
+            loginSection.style.display = 'none';
+            dashboardSection.style.display = 'block';
+            loadFiles();
+            updateStorageInfo();
+        }
+        
+        // Handle login
+        function handleLogin() {
+            const enteredUsername = username.value.trim();
+            const enteredPassword = password.value;
+            
+            if (enteredUsername === CORRECT_USERNAME && enteredPassword === CORRECT_PASSWORD) {
+                localStorage.setItem('isLoggedIn', 'true');
+                showDashboard();
+                loginAlert.style.display = 'none';
+            } else {
+                loginAlert.textContent = 'Invalid username or password. Please try again.';
+                loginAlert.className = 'alert alert-danger';
+                loginAlert.style.display = 'block';
+            }
+        }
+        
+        // Handle logout
+        function handleLogout() {
+            localStorage.setItem('isLoggedIn', 'false');
+            showLogin();
+            username.value = '';
+            password.value = '';
+        }
+        
+        // Format file size to human-readable format
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+            else return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+        
+        // Get all files from local storage
+        function getFiles() {
+            const fileList = [];
+            const keys = Object.keys(localStorage);
+            
+            for (let key of keys) {
+                if (key.startsWith('file_')) {
+                    try {
+                        const fileData = JSON.parse(localStorage.getItem(key));
+                        fileList.push(fileData);
+                    } catch (e) {
+                        console.error('Error parsing file data:', e);
+                    }
+                }
+            }
+            
+            return fileList.sort((a, b) => b.dateAdded - a.dateAdded);
+        }
+        
+        // Load files to the table
+        function loadFiles() {
+            const files = getFiles();
+            fileListBody.innerHTML = '';
+            
+            if (files.length === 0) {
+                noFilesMessage.style.display = 'block';
+                document.getElementById('fileList').style.display = 'none';
+                return;
+            }
+            
+            noFilesMessage.style.display = 'none';
+            document.getElementById('fileList').style.display = 'table';
+            
+            files.forEach(file => {
+                const row = document.createElement('tr');
+                row.className = 'file-row';
+                
+                const dateAdded = new Date(file.dateAdded);
+                const formattedDate = dateAdded.toLocaleString();
+                
+                row.innerHTML = `
+                    <td>${file.name}</td>
+                    <td>${formatFileSize(file.size)}</td>
+                    <td>${formattedDate}</td>
+                    <td class="file-actions">
+                        <button type="button" class="view-btn" data-id="${file.id}">View</button>
+                        <button type="button" class="download-btn" data-id="${file.id}">Download</button>
+                        <button type="button" class="delete-btn" data-id="${file.id}">Delete</button>
+                    </td>
+                `;
+                
+                fileListBody.appendChild(row);
+            });
+            
+            // Add event listeners for file actions
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', () => viewFile(btn.getAttribute('data-id')));
+            });
+            
+            document.querySelectorAll('.download-btn').forEach(btn => {
+                btn.addEventListener('click', () => downloadFile(btn.getAttribute('data-id')));
+            });
+            
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteFile(btn.getAttribute('data-id')));
+            });
+        }
+        
+        // Save file to local storage
+        function saveFile(file, content) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    const fileData = {
+                        id: fileId,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: event.target.result,
+                        dateAdded: Date.now()
+                    };
+                    
+                    try {
+                        localStorage.setItem(fileId, JSON.stringify(fileData));
+                        resolve(fileData);
+                    } catch (e) {
+                        if (e.name === 'QuotaExceededError') {
+                            reject('Storage limit exceeded. Please delete some files first.');
+                        } else {
+                            reject('Error saving file: ' + e.message);
+                        }
+                    }
+                };
+                
+                reader.onerror = () => reject('Error reading file.');
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // Handle file upload
+        async function handleFileUpload(files) {
+            if (!files || files.length === 0) return;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                try {
+                    // Check if adding this file would exceed storage limit
+                    const currentUsage = calculateUsedStorage();
+                    if (currentUsage + file.size > MAX_STORAGE_BYTES) {
+                        alert(`Cannot upload ${file.name}. Storage limit would be exceeded.`);
+                        continue;
+                    }
+                    
+                    await saveFile(file);
+                } catch (error) {
+                    alert(error);
+                    break;
+                }
+            }
+            
+            loadFiles();
+            updateStorageInfo();
+        }
+        
+        // View file
+        function viewFile(fileId) {
+            const fileData = JSON.parse(localStorage.getItem(fileId));
+            
+            if (!fileData) {
+                alert('File not found.');
+                return;
+            }
+            
+            // Check if file is viewable in browser
+            if (fileData.type.startsWith('image/') || 
+                fileData.type === 'application/pdf' || 
+                fileData.type === 'text/plain' ||
+                fileData.type.includes('html')) {
+                
+                const win = window.open('', '_blank');
+                if (win) {
+                    win.document.write(`
+                        <html>
+                            <head>
+                                <title>${fileData.name}</title>
+                                <style>
+                                    body { margin: 0; padding: 20px; font-family: sans-serif; }
+                                    .container { max-width: 1000px; margin: 0 auto; }
+                                    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                                    .back-btn { padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                                    img, object { max-width: 100%; display: block; margin: 0 auto; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="container">
+                                    <div class="header">
+                                        <h2>${fileData.name}</h2>
+                                        <button class="back-btn" onclick="window.close()">Close</button>
+                                    </div>
+                    `);
+                    
+                    if (fileData.type.startsWith('image/')) {
+                        win.document.write(`<img src="${fileData.content}" alt="${fileData.name}" />`);
+                    } else if (fileData.type === 'application/pdf') {
+                        win.document.write(`<object data="${fileData.content}" type="application/pdf" width="100%" height="800px"></object>`);
+                    } else if (fileData.type === 'text/plain') {
+                        // For text files, we need to extract the text from the data URL
+                        const content = atob(fileData.content.split(',')[1]);
+                        win.document.write(`<pre style="white-space: pre-wrap; word-break: break-word;">${content}</pre>`);
+                    } else if (fileData.type.includes('html')) {
+                        const content = atob(fileData.content.split(',')[1]);
+                        win.document.write(`<iframe srcdoc="${encodeURI(content)}" style="width:100%; height:800px; border:none;"></iframe>`);
+                    }
+                    
+                    win.document.write(`
+                                </div>
+                            </body>
+                        </html>
+                    `);
+                    win.document.close();
+                } else {
+                    alert('Unable to open new window. Please check your popup blocker settings.');
+                }
+            } else {
+                // For non-viewable files, prompt download
+                downloadFile(fileId);
+            }
+        }
+        
+        // Download file
+        function downloadFile(fileId) {
+            const fileData = JSON.parse(localStorage.getItem(fileId));
+            
+            if (!fileData) {
+                alert('File not found.');
+                return;
+            }
+            
+            const link = document.createElement('a');
+            link.href = fileData.content;
+            link.download = fileData.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Delete file
+        function deleteFile(fileId) {
+            if (confirm('Are you sure you want to delete this file?')) {
+                localStorage.removeItem(fileId);
+                loadFiles();
+                updateStorageInfo();
+            }
+        }
+        
+        // Calculate used storage
+        function calculateUsedStorage() {
+            let totalSize = 0;
+            const files = getFiles();
+            
+            files.forEach(file => {
+                totalSize += file.size;
+            });
+            
+            return totalSize;
+        }
+        
+        // Update storage info display
+        function updateStorageInfo() {
+            const used = calculateUsedStorage();
+            const usedPercentage = (used / MAX_STORAGE_BYTES) * 100;
+            
+            usedStorage.textContent = formatFileSize(used);
+            storageProgressBar.style.width = usedPercentage + '%';
+            
+            // Change progress bar color based on usage
+            if (usedPercentage > 90) {
+                storageProgressBar.style.backgroundColor = '#e74c3c';
+            } else if (usedPercentage > 70) {
+                storageProgressBar.style.backgroundColor = '#f39c12';
+            } else {
+                storageProgressBar.style.backgroundColor = '#3498db';
+            }
+        }
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+        loginBtn.addEventListener('click', handleLogin);
+        logoutBtn.addEventListener('click', handleLogout);
+        
+        // File upload by click
+        selectFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files));
+        
+        // Drag and drop functionality
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.add('highlight');
+        });
+        
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.classList.remove('highlight');
+        });
+        
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.remove('highlight');
+            handleFileUpload(e.dataTransfer.files);
+        });
+        
+        // Enter key for login
+        password.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    </script>
+</body>
+</html>
